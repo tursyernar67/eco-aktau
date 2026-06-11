@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Recycle, User, Menu, X, ChevronDown, Leaf, Sparkles, Gift } from 'lucide-react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal } from './components/AuthModal';
 import { UserDashboard } from './components/UserDashboard';
 import { RewardsCatalog } from './components/RewardsCatalog';
@@ -9,12 +8,20 @@ import { EcoMap } from './components/EcoMap';
 import { StatsDashboard } from './components/StatsDashboard';
 import { Footer } from './components/Footer';
 
-function Navbar() {
+// Demo user for hackathon presentation
+type DemoUser = {
+  email: string;
+  points: number;
+};
+
+function Navbar({ demoUser, onLogout, onOpenAuth, onOpenDashboard }: {
+  demoUser: DemoUser | null;
+  onLogout: () => void;
+  onOpenAuth: () => void;
+  onOpenDashboard: () => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, signOut } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -81,17 +88,17 @@ function Navbar() {
               >
                 Партнеры
               </button>
-              {user ? (
+              {demoUser ? (
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setShowDashboard(true)}
+                    onClick={onOpenDashboard}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-cyan-700 transition-all shadow-lg"
                   >
                     <User className="w-4 h-4" />
                     Кабинет
                   </button>
                   <button
-                    onClick={signOut}
+                    onClick={onLogout}
                     className={`font-medium ${scrolled ? 'text-gray-600 hover:text-red-600' : 'text-white/80 hover:text-white'}`}
                   >
                     Выйти
@@ -99,7 +106,7 @@ function Navbar() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowAuth(true)}
+                  onClick={onOpenAuth}
                   className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-cyan-700 transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40"
                 >
                   <User className="w-4 h-4" />
@@ -146,11 +153,11 @@ function Navbar() {
               >
                 Партнеры
               </button>
-              {user ? (
+              {demoUser ? (
                 <>
                   <button
                     onClick={() => {
-                      setShowDashboard(true);
+                      onOpenDashboard();
                       setIsOpen(false);
                     }}
                     className="w-full py-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-semibold rounded-lg text-center"
@@ -159,7 +166,7 @@ function Navbar() {
                   </button>
                   <button
                     onClick={() => {
-                      signOut();
+                      onLogout();
                       setIsOpen(false);
                     }}
                     className="block w-full text-left py-2 text-red-600"
@@ -170,7 +177,7 @@ function Navbar() {
               ) : (
                 <button
                   onClick={() => {
-                    setShowAuth(true);
+                    onOpenAuth();
                     setIsOpen(false);
                   }}
                   className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-semibold rounded-lg text-center"
@@ -182,9 +189,6 @@ function Navbar() {
           </div>
         )}
       </nav>
-
-      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
-      <UserDashboard isOpen={showDashboard} onClose={() => setShowDashboard(false)} />
     </>
   );
 }
@@ -272,13 +276,36 @@ function Hero() {
 }
 
 function AppContent() {
-  const { user } = useAuth();
+  const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
 
+  const handleDemoLogin = () => {
+    setDemoUser({
+      email: 'demo@ecoaktau.kz',
+      points: 0, // Start with 0 - user earns points after courier weighs bottles
+    });
+    setShowDashboard(true);
+  };
+
+  const handleLogout = () => {
+    setDemoUser(null);
+  };
+
+  const handlePointsChange = (newPoints: number) => {
+    if (demoUser) {
+      setDemoUser({ ...demoUser, points: newPoints });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
+      <Navbar
+        demoUser={demoUser}
+        onLogout={handleLogout}
+        onOpenAuth={() => setShowAuth(true)}
+        onOpenDashboard={() => setShowDashboard(true)}
+      />
       <Hero />
       <RewardsCatalog />
       <StatsDashboard />
@@ -287,7 +314,7 @@ function AppContent() {
       <Footer />
 
       {/* Floating Action Button for logged-in users */}
-      {user && (
+      {demoUser && (
         <button
           onClick={() => setShowDashboard(true)}
           className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-full flex items-center justify-center shadow-xl shadow-emerald-500/30 hover:scale-110 transition-transform z-40 animate-pulse-green"
@@ -297,16 +324,21 @@ function AppContent() {
         </button>
       )}
 
-      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
-      <UserDashboard isOpen={showDashboard} onClose={() => setShowDashboard(false)} />
+      <AuthModal
+        isOpen={showAuth}
+        onClose={() => setShowAuth(false)}
+        onDemoLogin={handleDemoLogin}
+      />
+      <UserDashboard
+        isOpen={showDashboard}
+        onClose={() => setShowDashboard(false)}
+        demoUser={demoUser}
+        onPointsChange={handlePointsChange}
+      />
     </div>
   );
 }
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 }
